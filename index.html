@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RIFTFIRE</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#a4432b">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Riftfire">
+<style>
+  :root{
+    --bg-deep:#0c0d0a;
+    --bg-panel:#15170f;
+    --olive:#3d4530;
+    --olive-light:#5a6640;
+    --rust:#a4432b;
+    --sand:#c9b98a;
+    --off-white:#e8e3d3;
+    --danger:#c23b2c;
+    --steel:#4a5049;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    width:100%; height:100%; overflow:hidden;
+    background:var(--bg-deep);
+    font-family:'Bahnschrift','Arial Narrow',sans-serif;
+    color:var(--off-white);
+  }
+  #app{position:relative; width:100vw; height:100vh;}
+
+  /* ---------- SCREENS ---------- */
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .hidden{display:none !important;}
+
+  /* ---------- TITLE ---------- */
+  #titleScreen{
+    background:
+      linear-gradient(180deg, rgba(12,13,10,0.4), rgba(12,13,10,0.95)),
+      repeating-linear-gradient(45deg, #14150f 0 2px, #101109 2px 4px);
+  }
+  .title-logo{
+    font-size:clamp(48px,10vw,96px);
+    font-weight:900;
+    letter-spacing:4px;
+    color:var(--off-white);
+    text-shadow: 3px 3px 0 var(--rust), 0 0 40px rgba(164,67,43,0.4);
+    transform:skewX(-6deg);
+  }
+  .title-sub{
+    margin-top:6px;
+    letter-spacing:8px;
+    color:var(--sand);
+    font-size:13px;
+    opacity:0.8;
+  }
+  .title-scanline{
+    width:min(500px,80vw);
+    height:2px;
+    background:var(--rust);
+    margin:28px 0 34px 0;
+    position:relative;
+    overflow:hidden;
+  }
+  .btn{
+    background:var(--olive);
+    border:1px solid var(--olive-light);
+    color:var(--off-white);
+    padding:14px 40px;
+    font-size:16px;
+    letter-spacing:3px;
+    cursor:pointer;
+    transform:skewX(-6deg);
+    transition:background .15s, transform .1s;
+    font-family:inherit;
+  }
+  .btn > span{display:inline-block; transform:skewX(6deg);}
+  .btn:hover{background:var(--olive-light);}
+  .btn:active{transform:skewX(-6deg) scale(0.97);}
+  .btn-primary{background:var(--rust); border-color:#c9613f;}
+  .btn-primary:hover{background:#c9613f;}
+  .btn-disabled{opacity:0.35; cursor:not-allowed;}
+
+  /* ---------- CHARACTER SELECT ---------- */
+  #selectScreen{
+    background:var(--bg-deep);
+    justify-content:flex-start;
+    padding-top:5vh;
+  }
+  .select-heading{
+    letter-spacing:6px;
+    font-size:14px;
+    color:var(--sand);
+    opacity:0.75;
+    margin-bottom:4px;
+  }
+  .select-title{
+    font-size:clamp(28px,5vw,42px);
+    font-weight:800;
+    letter-spacing:2px;
+    margin-bottom:28px;
+  }
+  .roster{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:1100px;
+    padding:0 16px;
+  }
+  .card{
+    width:170px;
+    background:var(--bg-panel);
+    border:2px solid var(--steel);
+    padding:14px 14px 16px;
+    cursor:pointer;
+    transition:border-color .15s, transform .1s;
+    position:relative;
+  }
+  .card:hover{border-color:var(--sand); transform:translateY(-4px);}
+  .card.active{border-color:var(--rust); box-shadow:0 0 0 1px var(--rust);}
+  .card-icon{
+    width:100%; height:90px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:10px;
+    background:linear-gradient(160deg, var(--olive), var(--bg-panel));
+  }
+  .card-name{
+    font-weight:800; font-size:15px; letter-spacing:1px;
+    margin-bottom:4px;
+  }
+  .card-role{
+    font-size:11px; color:var(--sand); opacity:0.7;
+    letter-spacing:1px; margin-bottom:10px;
+    text-transform:uppercase;
+  }
+  .card-ability{
+    font-size:11px; line-height:1.5; color:var(--off-white); opacity:0.85;
+  }
+  .card-ability b{color:var(--rust);}
+  .select-footer{
+    margin-top:30px;
+    display:flex; gap:16px; align-items:center;
+  }
+
+  /* ---------- HUD / GAME ---------- */
+  #gameScreen{ display:block; }
+  #gameCanvas{ display:block; background:#1b1e14; cursor:crosshair; }
+
+  #hud{
+    position:absolute; inset:0; pointer-events:none;
+    font-family:inherit;
+  }
+  .hud-topleft{
+    position:absolute; top:16px; left:16px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .hud-charchip{
+    width:44px; height:44px;
+    background:var(--bg-panel);
+    border:2px solid var(--rust);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:16px;
+  }
+  .hud-name{font-weight:700; letter-spacing:1px; font-size:14px;}
+  .hud-role{font-size:10px; color:var(--sand); opacity:0.7; letter-spacing:1px;}
+
+  .hud-bottomleft{
+    position:absolute; bottom:16px; left:16px;
+    display:flex; flex-direction:column; gap:8px; width:220px;
+  }
+  .bar-label{font-size:10px; letter-spacing:2px; opacity:0.7; margin-bottom:2px;}
+  .bar-bg{
+    width:100%; height:14px;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.15);
+  }
+  .bar-fill{height:100%; transition:width .15s;}
+  .bar-hp{background:linear-gradient(90deg,#7a1f16,var(--danger));}
+  .bar-ability{background:linear-gradient(90deg,#39506b,#5b8bb8);}
+
+  .hud-bottomright{
+    position:absolute; bottom:16px; right:16px;
+    text-align:right;
+  }
+  .ammo-count{font-size:34px; font-weight:900; letter-spacing:1px;}
+  .ammo-label{font-size:10px; letter-spacing:2px; opacity:0.6;}
+
+  .hud-topright{
+    position:absolute; top:16px; right:16px;
+    text-align:right;
+    font-size:12px; letter-spacing:1px; opacity:0.85;
+  }
+  .score-val{font-size:22px; font-weight:800;}
+
+  #crosshair{
+    position:absolute; width:26px; height:26px;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+  }
+  #crosshair::before, #crosshair::after{
+    content:''; position:absolute; background:var(--off-white);
+  }
+  #crosshair::before{ left:50%; top:0; width:2px; height:100%; transform:translateX(-1px); }
+  #crosshair::after{ top:50%; left:0; height:2px; width:100%; transform:translateY(-1px); }
+
+  .hud-banner{
+    position:absolute; top:70px; left:50%; transform:translateX(-50%);
+    background:rgba(15,16,11,0.85);
+    border:1px solid var(--rust);
+    padding:8px 22px;
+    font-size:13px; letter-spacing:2px;
+    opacity:0; transition:opacity .2s;
+  }
+  .hud-banner.show{opacity:1;}
+
+  .hud-controls-hint{
+    position:absolute; top:16px; left:50%; transform:translateX(-50%);
+    font-size:11px; letter-spacing:1px; opacity:0.5; text-align:center;
+  }
+
+  #pauseOverlay{
+    position:absolute; inset:0;
+    background:rgba(8,9,6,0.9);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TITLE -->
+  <div id="titleScreen" class="screen">
+    <div class="title-logo">RIFTFIRE</div>
+    <div class="title-sub">TACTICAL ENGAGEMENT PROTOTYPE</div>
+    <div class="title-scanline"></div>
+    <button class="btn btn-primary" id="startBtn"><span>DEPLOY</span></button>
+  </div>
+
+  <!-- CHARACTER SELECT -->
+  <div id="selectScreen" class="screen hidden">
+    <div class="select-heading">SELECT OPERATOR</div>
+    <div class="select-title">CHOOSE YOUR LOADOUT</div>
+    <div class="roster" id="roster"></div>
+    <div class="select-footer">
+      <button class="btn" id="backBtn"><span>BACK</span></button>
+      <button class="btn btn-primary" id="deployBtn"><span>ENTER ARENA</span></button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="gameScreen" class="screen hidden">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+      <div class="hud-topleft">
+        <div class="hud-charchip" id="hudChip">V</div>
+        <div>
+          <div class="hud-name" id="hudName">VANGUARD</div>
+          <div class="hud-role" id="hudRole">ASSAULT</div>
+        </div>
+      </div>
+      <div class="hud-controls-hint">WASD MOVE&nbsp;&nbsp;·&nbsp;&nbsp;MOUSE AIM&nbsp;&nbsp;·&nbsp;&nbsp;CLICK SHOOT&nbsp;&nbsp;·&nbsp;&nbsp;SPACE ABILITY&nbsp;&nbsp;·&nbsp;&nbsp;ESC PAUSE</div>
+      <div class="hud-topright">
+        <div>ELIMINATIONS</div>
+        <div class="score-val" id="scoreVal">0</div>
+      </div>
+      <div class="hud-bottomleft">
+        <div>
+          <div class="bar-label">HEALTH</div>
+          <div class="bar-bg"><div class="bar-fill bar-hp" id="hpBar" style="width:100%"></div></div>
+        </div>
+        <div>
+          <div class="bar-label" id="abilityLabel">ABILITY</div>
+          <div class="bar-bg"><div class="bar-fill bar-ability" id="abilityBar" style="width:100%"></div></div>
+        </div>
+      </div>
+      <div class="hud-bottomright">
+        <div class="ammo-count" id="ammoVal">30</div>
+        <div class="ammo-label">AMMO</div>
+      </div>
+      <div class="hud-banner" id="banner"></div>
+    </div>
+  </div>
+
+  <div id="pauseOverlay" class="screen hidden">
+    <div class="title-sub">PAUSED</div>
+    <button class="btn btn-primary" id="resumeBtn"><span>RESUME</span></button>
+    <button class="btn" id="menuBtn"><span>EXIT TO MENU</span></button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  // ---------------- OPERATOR DATA ----------------
+  const OPERATORS = [
+    {
+      id:'vanguard', name:'VANGUARD', role:'ASSAULT', letter:'V', color:'#a4432b',
+      abilityName:'RIOT SHIELD', abilityDesc:'Deploys a <b>bullet-blocking shield</b> for 3s while active.',
+      hp:120, speed:2.6, cooldown:8
+    },
+    {
+      id:'ghost', name:'GHOST', role:'INFILTRATOR', letter:'G', color:'#4a5b6b',
+      abilityName:'CLOAK', abilityDesc:'Turns <b>invisible</b> to enemies for 2.5s, great for flanking.',
+      hp:85, speed:3.4, cooldown:10
+    },
+    {
+      id:'medic', name:'MEDIC', role:'SUPPORT', letter:'M', color:'#4c7a52',
+      abilityName:'HEAL PULSE', abilityDesc:'Restores <b>health</b> in a burst around you.',
+      hp:95, speed:2.9, cooldown:9
+    },
+    {
+      id:'breacher', name:'BREACHER', role:'DEMOLITION', letter:'B', color:'#b8862f',
+      abilityName:'FLASH CHARGE', abilityDesc:'Throws a <b>flash</b> that blinds enemies in range.',
+      hp:100, speed:2.8, cooldown:11
+    },
+    {
+      id:'recon', name:'RECON', role:'SCOUT', letter:'R', color:'#6a4c8c',
+      abilityName:'SCANNER PULSE', abilityDesc:'Reveals nearby <b>enemy positions</b> briefly.',
+      hp:90, speed:3.1, cooldown:7
+    },
+  ];
+
+  let selectedOperator = OPERATORS[0];
+
+  // ---------------- SCREEN MANAGEMENT ----------------
+  const screens = {
+    title: document.getElementById('titleScreen'),
+    select: document.getElementById('selectScreen'),
+    game: document.getElementById('gameScreen'),
+    pause: document.getElementById('pauseOverlay'),
+  };
+  function show(name){
+    Object.values(screens).forEach(s=>s.classList.add('hidden'));
+    screens[name].classList.remove('hidden');
+  }
+
+  // ---------------- BUILD ROSTER UI ----------------
+  const rosterEl = document.getElementById('roster');
+  OPERATORS.forEach(op=>{
+    const card = document.createElement('div');
+    card.className = 'card' + (op.id===selectedOperator.id ? ' active' : '');
+    card.dataset.id = op.id;
+    card.innerHTML = `
+      <div class="card-icon"><svg width="46" height="46" viewBox="0 0 46 46">
+        <circle cx="23" cy="16" r="9" fill="${op.color}"/>
+        <path d="M6 44 Q23 24 40 44 Z" fill="${op.color}"/>
+      </svg></div>
+      <div class="card-name">${op.name}</div>
+      <div class="card-role">${op.role}</div>
+      <div class="card-ability">${op.abilityName}<br>${op.abilityDesc}</div>
+    `;
+    card.addEventListener('click', ()=>{
+      selectedOperator = op;
+      document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+      card.classList.add('active');
+    });
+    rosterEl.appendChild(card);
+  });
+
+  document.getElementById('startBtn').addEventListener('click', ()=>show('select'));
+  document.getElementById('backBtn').addEventListener('click', ()=>show('title'));
+  document.getElementById('deployBtn').addEventListener('click', ()=>{ show('game'); startGame(); });
+  document.getElementById('resumeBtn').addEventListener('click', ()=>{ paused=false; show('game'); });
+  document.getElementById('menuBtn').addEventListener('click', ()=>{ paused=false; running=false; show('title'); });
+
+  // ---------------- GAME SETUP ----------------
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const keys = {};
+  window.addEventListener('keydown', e=>{
+    keys[e.key.toLowerCase()] = true;
+    if(e.key==='Escape' && screens.game.classList.contains('hidden')===false){
+      paused = !paused;
+      show(paused ? 'pause' : 'game');
+    }
+    if(e.key===' '){ triggerAbility(); e.preventDefault(); }
+  });
+  window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+
+  let mouse = {x:0,y:0};
+  canvas.addEventListener('mousemove', e=>{
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    const ch = document.getElementById('crosshair');
+  });
+  canvas.addEventListener('mousedown', ()=>{ shooting = true; });
+  canvas.addEventListener('mouseup', ()=>{ shooting = false; });
+
+  let crosshairEl;
+  function ensureCrosshair(){
+    if(!crosshairEl){
+      crosshairEl = document.createElement('div');
+      crosshairEl.id = 'crosshair';
+      document.getElementById('hud').appendChild(crosshairEl);
+    }
+  }
+
+  // ---------------- OBSTACLES (arena) ----------------
+  function buildArena(w,h){
+    return [
+      {x:w*0.2,y:h*0.25,w:120,h:40},
+      {x:w*0.6,y:h*0.15,w:40,h:160},
+      {x:w*0.35,y:h*0.6,w:160,h:40},
+      {x:w*0.75,y:h*0.55,w:40,h:180},
+      {x:w*0.1,y:h*0.75,w:140,h:40},
+    ];
+  }
+  let obstacles = [];
+
+  // ---------------- ENTITIES ----------------
+  let player, bots, bullets, particles, score, running, paused;
+  let shooting = false;
+  let lastShotTime = 0;
+  let abilityActive = false, abilityTimer = 0, abilityCooldownTimer = 0;
+  let bannerTimeout;
+
+  function rectsOverlap(a,b){
+    return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+  }
+  function circleRectCollide(cx,cy,r,rect){
+    const nx = Math.max(rect.x, Math.min(cx, rect.x+rect.w));
+    const ny = Math.max(rect.y, Math.min(cy, rect.y+rect.h));
+    const dx = cx-nx, dy = cy-ny;
+    return (dx*dx+dy*dy) < r*r;
+  }
+
+  function makeBot(w,h,color){
+    let x,y, tries=0;
+    do {
+      x = 60 + Math.random()*(w-120);
+      y = 60 + Math.random()*(h-120);
+      tries++;
+    } while(tries < 30 && obstacles.some(o=>circleRectCollide(x,y,40,o)));
+    return {
+      x,y, r:14, hp:70, maxHp:70, color: color||'#8a5a3a',
+      dir: Math.random()*Math.PI*2, changeDirTimer: 0, alive:true,
+      shootTimer: Math.random()*2
+    };
+  }
+
+  function startGame(){
+    obstacles = buildArena(canvas.width, canvas.height);
+    player = {
+      x: canvas.width/2, y: canvas.height/2, r:16,
+      hp: selectedOperator.hp, maxHp: selectedOperator.hp,
+      speed: selectedOperator.speed, ammo:30, maxAmmo:30, reloading:false
+    };
+    bots = [];
+    for(let i=0;i<5;i++) bots.push(makeBot(canvas.width, canvas.height));
+    bullets = [];
+    particles = [];
+    score = 0;
+    running = true;
+    paused = false;
+    shooting = false;
+    abilityActive = false; abilityTimer = 0; abilityCooldownTimer = 0;
+
+    document.getElementById('hudChip').textContent = selectedOperator.letter;
+    document.getElementById('hudChip').style.borderColor = selectedOperator.color;
+    document.getElementById('hudName').textContent = selectedOperator.name;
+    document.getElementById('hudRole').textContent = selectedOperator.role;
+    document.getElementById('abilityLabel').textContent = selectedOperator.abilityName;
+    document.getElementById('scoreVal').textContent = '0';
+    ensureCrosshair();
+
+    requestAnimationFrame(loop);
+  }
+
+  function showBanner(text){
+    const b = document.getElementById('banner');
+    b.textContent = text;
+    b.classList.add('show');
+    clearTimeout(bannerTimeout);
+    bannerTimeout = setTimeout(()=>b.classList.remove('show'), 1400);
+  }
+
+  function triggerAbility(){
+    if(!running || paused) return;
+    if(abilityCooldownTimer > 0) return;
+    abilityActive = true;
+    abilityTimer = selectedOperator.id==='ghost' ? 2.5 : (selectedOperator.id==='breacher' ? 0.2 : 3);
+    abilityCooldownTimer = selectedOperator.cooldown;
+    showBanner(selectedOperator.abilityName + ' ACTIVATED');
+
+    if(selectedOperator.id==='medic'){
+      player.hp = Math.min(player.maxHp, player.hp + 35);
+    }
+    if(selectedOperator.id==='breacher'){
+      bots.forEach(b=>{
+        if(b.alive){
+          const d = Math.hypot(b.x-player.x, b.y-player.y);
+          if(d < 260) b.flashed = 2.2;
+        }
+      });
+    }
+    if(selectedOperator.id==='recon'){
+      bots.forEach(b=>{ if(b.alive) b.revealed = 3; });
+    }
+  }
+
+  function spawnParticles(x,y,color,count){
+    for(let i=0;i<count;i++){
+      particles.push({
+        x,y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4,
+        life:0.4+Math.random()*0.3, color
+      });
+    }
+  }
+
+  function moveWithCollision(entity, dx, dy){
+    let nx = entity.x + dx;
+    let ny = entity.y + dy;
+    const r = entity.r;
+    let blocked = false;
+    for(const o of obstacles){
+      if(circleRectCollide(nx, entity.y, r, o)) { nx = entity.x; blocked = true; }
+      if(circleRectCollide(entity.x, ny, r, o)) { ny = entity.y; blocked = true; }
+    }
+    entity.x = Math.max(r, Math.min(canvas.width-r, nx));
+    entity.y = Math.max(r, Math.min(canvas.height-r, ny));
+  }
+
+  function update(dt){
+    if(!running || paused) return;
+
+    // player movement
+    let dx=0, dy=0;
+    if(keys['w']||keys['arrowup']) dy -= 1;
+    if(keys['s']||keys['arrowdown']) dy += 1;
+    if(keys['a']||keys['arrowleft']) dx -= 1;
+    if(keys['d']||keys['arrowright']) dx += 1;
+    if(dx||dy){
+      const len = Math.hypot(dx,dy);
+      dx/=len; dy/=len;
+      moveWithCollision(player, dx*player.speed*(dt*60), dy*player.speed*(dt*60));
+    }
+
+    // ability timers
+    if(abilityTimer > 0){ abilityTimer -= dt; if(abilityTimer<=0) abilityActive=false; }
+    if(abilityCooldownTimer > 0) abilityCooldownTimer -= dt;
+    document.getElementById('abilityBar').style.width =
+      (100 - Math.max(0,(abilityCooldownTimer/selectedOperator.cooldown))*100) + '%';
+
+    // shooting
+    lastShotTime += dt;
+    if(shooting && lastShotTime > 0.12 && player.ammo > 0 && !player.reloading){
+      lastShotTime = 0;
+      player.ammo--;
+      const angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+      bullets.push({
+        x:player.x, y:player.y,
+        vx:Math.cos(angle)*11, vy:Math.sin(angle)*11,
+        friendly:true, life:1.2
+      });
+      document.getElementById('ammoVal').textContent = player.ammo;
+      if(player.ammo===0){
+        player.reloading = true;
+        showBanner('RELOADING...');
+        setTimeout(()=>{
+          player.ammo = player.maxAmmo;
+          player.reloading = false;
+          document.getElementById('ammoVal').textContent = player.ammo;
+        }, 1200);
+      }
+    }
+
+    // bullets update
+    bullets.forEach(b=>{
+      b.x += b.vx*(dt*60); b.y += b.vy*(dt*60);
+      b.life -= dt;
+    });
+
+    // bullet vs obstacles
+    bullets.forEach(b=>{
+      for(const o of obstacles){
+        if(b.x>o.x && b.x<o.x+o.w && b.y>o.y && b.y<o.y+o.h){ b.life = 0; }
+      }
+    });
+
+    // bullet vs bots
+    bullets.forEach(b=>{
+      if(!b.friendly || b.life<=0) return;
+      bots.forEach(bot=>{
+        if(!bot.alive) return;
+        const d = Math.hypot(b.x-bot.x, b.y-bot.y);
+        if(d < bot.r+4){
+          bot.hp -= 22;
+          b.life = 0;
+          spawnParticles(b.x,b.y,'#c9613f',6);
+          if(bot.hp <= 0){
+            bot.alive = false;
+            score++;
+            document.getElementById('scoreVal').textContent = score;
+            spawnParticles(bot.x,bot.y,'#3d4530',14);
+            setTimeout(()=>{
+              const idx = bots.indexOf(bot);
+              if(idx>=0) bots[idx] = makeBot(canvas.width, canvas.height);
+            }, 1500);
+          }
+        }
+      });
+    });
+
+    // bullet vs player
+    bullets.forEach(b=>{
+      if(b.friendly || b.life<=0) return;
+      const shielded = abilityActive && selectedOperator.id==='vanguard';
+      const d = Math.hypot(b.x-player.x, b.y-player.y);
+      if(d < player.r+3){
+        b.life = 0;
+        const cloaked = abilityActive && selectedOperator.id==='ghost';
+        if(!shielded){
+          player.hp -= 10;
+          spawnParticles(player.x,player.y,'#c23b2c',6);
+          document.getElementById('hpBar').style.width = Math.max(0,(player.hp/player.maxHp)*100)+'%';
+          if(player.hp<=0){
+            running = false;
+            showBanner('ELIMINATED — RESPAWNING');
+            setTimeout(()=>{
+              player.hp = player.maxHp;
+              player.x = canvas.width/2; player.y = canvas.height/2;
+              document.getElementById('hpBar').style.width='100%';
+              running = true;
+            }, 1600);
+          }
+        }
+      }
+    });
+
+    bullets = bullets.filter(b=>b.life>0 && b.x>-20 && b.x<canvas.width+20 && b.y>-20 && b.y<canvas.height+20);
+
+    // bots AI
+    bots.forEach(bot=>{
+      if(!bot.alive) return;
+      if(bot.flashed>0) bot.flashed -= dt;
+      if(bot.revealed>0) bot.revealed -= dt;
+
+      bot.changeDirTimer -= dt;
+      if(bot.changeDirTimer<=0){
+        bot.dir = Math.random()*Math.PI*2;
+        bot.changeDirTimer = 1+Math.random()*1.5;
+      }
+      const cloaked = abilityActive && selectedOperator.id==='ghost';
+      const distToPlayer = Math.hypot(player.x-bot.x, player.y-bot.y);
+      const canSeePlayer = !cloaked && distToPlayer < 380 && bot.flashed<=0;
+
+      let mvx = Math.cos(bot.dir)*1.1, mvy = Math.sin(bot.dir)*1.1;
+      if(canSeePlayer){
+        const ang = Math.atan2(player.y-bot.y, player.x-bot.x);
+        mvx = Math.cos(ang)*1.3; mvy = Math.sin(ang)*1.3;
+      }
+      moveWithCollision(bot, mvx*(dt*60), mvy*(dt*60));
+
+      bot.shootTimer -= dt;
+      if(canSeePlayer && bot.shootTimer<=0){
+        bot.shootTimer = 1.1 + Math.random()*0.6;
+        const angle = Math.atan2(player.y-bot.y, player.x-bot.x);
+        bullets.push({
+          x:bot.x, y:bot.y,
+          vx:Math.cos(angle)*7, vy:Math.sin(angle)*7,
+          friendly:false, life:1.4
+        });
+      }
+    });
+
+    particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life-=dt; });
+    particles = particles.filter(p=>p.life>0);
+  }
+
+  function draw(){
+    ctx.fillStyle = '#1b1e14';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // ground texture grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for(let x=0;x<canvas.width;x+=48){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+    for(let y=0;y<canvas.height;y+=48){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+
+    // obstacles
+    obstacles.forEach(o=>{
+      ctx.fillStyle = '#2c2f22';
+      ctx.fillRect(o.x,o.y,o.w,o.h);
+      ctx.strokeStyle = '#4a5238';
+      ctx.strokeRect(o.x,o.y,o.w,o.h);
+    });
+
+    // bots
+    bots.forEach(bot=>{
+      if(!bot.alive) return;
+      ctx.save();
+      if(bot.flashed>0){ ctx.globalAlpha = 0.4; }
+      ctx.fillStyle = bot.color;
+      ctx.beginPath();
+      ctx.arc(bot.x,bot.y,bot.r,0,Math.PI*2);
+      ctx.fill();
+      // hp bar
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(bot.x-16, bot.y-26, 32, 5);
+      ctx.fillStyle = '#c23b2c';
+      ctx.fillRect(bot.x-16, bot.y-26, 32*(bot.hp/70), 5);
+      if(bot.revealed>0){
+        ctx.strokeStyle='rgba(90,150,180,0.8)';
+        ctx.beginPath(); ctx.arc(bot.x,bot.y,bot.r+6,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    // bullets
+    bullets.forEach(b=>{
+      ctx.fillStyle = b.friendly ? '#e8c98a' : '#d65b4a';
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,3,0,Math.PI*2);
+      ctx.fill();
+    });
+
+    // particles
+    particles.forEach(p=>{
+      ctx.globalAlpha = Math.max(0,p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x-2,p.y-2,4,4);
+      ctx.globalAlpha = 1;
+    });
+
+    // player
+    const cloaked = abilityActive && selectedOperator.id==='ghost';
+    ctx.save();
+    if(cloaked) ctx.globalAlpha = 0.35;
+    if(abilityActive && selectedOperator.id==='vanguard'){
+      ctx.strokeStyle = 'rgba(120,170,220,0.9)';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(player.x,player.y,player.r+8,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.fillStyle = selectedOperator.color;
+    ctx.beginPath();
+    ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
+    ctx.fill();
+    // facing indicator
+    const angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+    ctx.strokeStyle = '#e8e3d3';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(player.x,player.y);
+    ctx.lineTo(player.x+Math.cos(angle)*22, player.y+Math.sin(angle)*22);
+    ctx.stroke();
+    ctx.restore();
+
+    // crosshair
+    if(crosshairEl){
+      crosshairEl.style.left = mouse.x+'px';
+      crosshairEl.style.top = mouse.y+'px';
+    }
+  }
+
+  let lastTime = performance.now();
+  function loop(now){
+    const dt = Math.min(0.033,(now-lastTime)/1000);
+    lastTime = now;
+    if(!screens.game.classList.contains('hidden')){
+      update(dt);
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
